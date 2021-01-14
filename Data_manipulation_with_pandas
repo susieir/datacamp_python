@@ -1,0 +1,210 @@
+# Data manipulation
+# Built on numpy and matplotlib
+# numpy - easy data manipulation
+# matplotlib - visualisation
+
+# Rectangular (tabluar) data is most common form
+""" Represented as a DataFrame object
+Each value within a col has the same data type
+Different columns can contain different data types
+"""
+
+#Exploring a new dataset
+dogs.head() #Returns the first 5 rows
+dogs.info() #Displays col names, data types and whether any missing values
+dogs.shape #Tuple that contains the number of rows, followed by the number of columns - an attribute, no () req
+dogs.describe() #computes summary statistics for numerical columns. Useful for a quick overview
+dogs.values #contains datavalues and 2D numpy array
+dogs.columns #Labels for columns
+dogs.index #Row numbers or row names
+
+# Pandas philosophy - should be only one obvious solution
+
+# Sorting and subsetting
+# Sorting
+dogs.sort_values("weight_kg") # Changes the order of the rows by sorting them, smallest to largest
+dogs.sort_values("weight_kg", ascending=False) #Sorts largest to smallest
+dogs.sort_values(["weight_kg", "height_cm"]) #Sorts based on list
+dogs.sort_values(["weight_kg", "height_cm"], ascending=[True, False]) #Sorts based on list, with order spec. for each var
+dogs.sort_values(["weight_kg", "height_cm"], ascending=[True, False]) #Sorts based on list, with order spec. for each var
+
+#Subsetting
+dogs["name"] #Zooms in on one column
+dogs[["breed", "name"]] #Selects multiple columns. Outer subsetting, inner create a list of column names
+dogs["height_cm"] > 50 #Creating a logical condition to filter against
+dogs[dogs["height_cm"] > 50] # Can use inside sq brackets to subset table
+dogs[dogs["breed"] == "Labrador"] #Filtering based on text data
+dogs[dogs["date_of_birth"] > "2015-01-01"] #Filtering based on dates, using international standard date format
+is_lab = dogs["breed"] == "Labrador"
+is_brown = dogs["color"] == "Brown"
+dogs[is_lab & is_brown] #Combining conditions using logical operators
+
+#Selecting multiple values using .isin()
+is_black_or_brown = dogs["color"].isin(["Black", "Brown"])
+dogs[is_black_or_brown]
+
+# New columns
+#Adding a new column
+dogs["height_m"] = dogs["height_cm"] / 100
+
+# Summary statistics
+dogs["height_cm"].mean() #Select column and call .mean()
+# Also: .median(), .mode(), .min(), .max(), .std(), .var(), .sum(), .quantile()
+
+#The .agg() method - create a function called pct30 - creates 30th percentile. Takes a column and spits out 30th percentile
+def pct30(column) :
+    return column.quantile(0.3)
+dogs["weight_kg"].agg(pct30) #Gives 30th percentile of dogs weight column
+# Can be used on more than one column
+
+dogs[["weight_kg", "height_cm"]].agg(pct30)
+# Gives output of both columns 30th percentiles
+
+#Multiple summaries
+def pct40(column) :
+    return column.quantile(0.4)
+#Can pass a list of functions into agg
+dogs["weight_kg"].agg([pct30,pct40])
+
+#Cumulative sum
+dogs["weight_kg"].cumsum()
+# Other cumulative stats = .cummax(), .cummin(), .cumproduct() - return a column of a df, rather than no
+
+#Counting
+# Summarising categorical data using counting
+vet_visits.drop_duplicates(subset = "name") #All unique names
+unique_dogs = vet_visits.drop_duplicates(subset = ["name", "breed"]) # All unique name/breed combos
+unique_dogs["breed"].value_counts(sort = True) #Counts number of times breed occurs, gets largest number on top
+unique_dogs["breed"].value_counts(normalize=True) #Turns count into proportions of the total
+
+# Grouped summary statistics
+dogs.groupby("color")["weight_kg"].mean()
+# Multiple grouped summaries
+dogs.groupby("color")["weight_kg"].agg([min, max, sum])
+# Grouping by multiple variables
+dogs.groupby(["color", "breed"])["weight_kg"].mean()
+# Groupby and aggregate by multiple columns
+dogs.groupby9["color", "breed"][["weight_kg", "height_cm"]].mean()
+
+#Pivot tables
+dogs.pivot_table(values="weight_kg", index="color")  ##Values - column summarise, index - columns groupby
+dogs.pivot_table(values="weight_kg", index="color", aggfunc=np.median)  #Aggfunc passes a different argument
+# Can pass a list of functions into aggfunc as before
+dogs.pivot_table(values="weight_kg", index="color", columns="breed", fill_value=0, margins=True) #Adds third dimension, fill values fills missing values with 0
+#Margins=True - last values set to mean of the row/column, not incl. missing values
+
+# Explicit indices
+# Setting a column as index
+dogs_ind = dogs.set_index("name") #Index values will be left aligned
+dogs_ind.reset_index(drop=True) #Discards index, entirely removes the dog names
+# Indexes make subsetting code cleaner
+dogs[dogs["name"].isin(["Bella", "Stella"])]
+dogs_ind.loc[["Bella", "Stella"]] #Loc filters on index values
+# Index values don't need to be unique
+# Can includes multiple columns in the index
+# Subset inner levels with list of tuples
+dogs_ind3.loc[[("Labrador", "Brown"), ("Chihuahua", "Tan")]] #Resulting rows have to match all conditions from a tuple
+dogs_ind3.sort_index() #Sorts by index, at all levels in ascending order
+dogs_ind3.sort_index(level="name") #Sorts by name
+
+"""
+- Indexes are just data and storing in more forms makes it more complex to use
+- Indexes violate "tidy data" principles. Index values don't get their own column
+ - You need to learn two syntaxes (different for columns vs. indexes"""
+
+# Slicing and subsetting with .loc and .iloc
+# Can slide dataframes but need to sort the index first
+dogs_srt = dogs.set_index(["breed", "color"]).sort_index()
+print(dogs_srt)
+
+dogs_srt.loc["Chow Chow":"Poodle"] #Specify index values rather than row numbers, final value "Poodle" is included
+# Doesn't work on inner index levels
+# To sort inner index levels, pass first and last positions as tuples
+dogs_srt.loc[("Labrador", "Brown"), ("Schnauzer", "Grey")]
+# Can also slice columsn
+dogs_srt.loc[:, "name":"height_cm"] #Subsets columns, keeps all rows
+dogs_srt.loc[("Labrador", "Brown"):("Schnauzer", "Grey"), "name":"height_cm"] #Slicing rows and columns at same time
+
+# Subset by range of dates - set index first
+dogs = dogs.set_index("date_of_birth").sort_index()
+print(dogs)
+# Get dogs with date of birth within range
+dogs.loc["2014-08-25":"2016-09-16"]
+# Slice by partial dates
+dogs.loc["2014":"2016"]
+
+#Subsetting by row / column number
+print(dogs.iloc[2:5],[1:4]) #Similar syntax to slicing lists, but with two arguments. Final values aren't incl. in slice
+
+# Applying to pivot tables
+# Loc and slicing can be applied to pivot tables
+#Axis argument
+dogs_height_by_breed_vs_color.mean(axis="index") #Calculates by row (index is default value)
+dogs_height_by_breed_vs_color.mean(axis="columns") #Calculates by column
+# Pivot tables - every column contains the same datatype
+
+# Bar plots
+avg_weight_by_breed.plot(kind=bar, title="Mean weight by dog breed")
+
+# Line plots
+sully.plot(x="date", y="weight_kg",kind="line", rot=45) #Rotate x-axis labels by 45 degrees
+# Scatter plots
+dog_pack.plot(x="height_cm", y="weight_kg", kind="scatter")
+
+#Layering plots
+dog_pack[dog_pack["sex"] == "F"]["height_cm"].hist(alpha=0.7) #Alpha makes the histograms translucent
+dog_pack[dog_pack["sex"] == "M"]["height_cm"].hist(alpha=0.7)
+plt.legend(["F", "M"])
+plt.show()
+
+#Missing values
+#Missing values indicated as NaN in pandas dataframe
+#Detecting missing values
+dogs.isna() #Boolean value for all values indicating whether missing values
+dogs.isna().any() #Shows if there are any missing values in each column
+dogs.isna().sum() #COunts number of missing values in each column
+dogs.isna().sum().plot(kind="bar") #Charts missing values
+plt.show()
+
+dogs.dropna() #Removes rows with missing values
+dogs.fillna() #Fills na's with 0
+
+#Creating dataframes
+
+#Dictionary - holds a set of key value pairs
+my_dict = {
+        "key1" : value1,
+        "key2" : value2}
+
+#Creating dataframes -
+# from a list of dictionaries - created row by row
+# from a dictionary of lists - constructed column by column
+# From a list of dictionaries
+import pandas as pd
+list_of_dicts = [
+    { "name" : "Ginger", "breed" : "Dachshund", "height_cm" : 22, "weight_kg" : 10, "date_of_birth" : "2019-03-14"},
+    {"name": "Scout", "breed": "Dalmation", "height_cm": 59, "weight_kg": 25, "date_of_birth": "2019-05-09"}
+]
+new_dogs = pd.DataFrame(list_of_dicts)
+print(new_dogs)
+
+# From a dictionary of lists
+import pandas as pd
+dict_of_lists = {
+    "name": ["Ginger", "Scout"],
+    "breed" : ["Dachshund", "Dalmation"],
+    "height_cm" : [22, 59],
+    "weight_kg" : [10, 25],
+    "date_of_birth" : ["2019-03-14", "2019-05-09"]
+}
+new_dogs2 = pd.DataFrame(dict_of_lists)
+print(new_dogs2)
+
+#Reading and writing csvs
+# CSV to dataframe
+import pandas as pd
+new_dogs = pd.read_csv ("new_dogs.csv")
+print(new_dogs)
+
+# DataFrame to csv
+new_dogs.to_csv("new_dogs_with_bmi.csv")
