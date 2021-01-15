@@ -288,8 +288,190 @@ random.seed(12)
 """ Chapter 4 - Clustering in the real world"""
 
 # Dominant colors in images
+# Analysing images to find dominant colors
+# All images consist of pixels
+# Each pixel has three values - Red, Green and Blue
+# Pixel color - combination of RBG values
+# Perform k-means on standardized RGB values to find cluster centers
+# Uses - identifying features in satellite images
 
+# Feature identification in satellite images
+# Kmeans can be used to identify surface features
 
+# Tools to find dominant colors
+# Convert image to pixels - matplotlib.image.imread - converts jpg into matrix with RGB values
+# Display colors of cluster centres - matplotlib.pyplot.imshow
 
+# Convert image to RGB image
+import os
+#print(os.getcwd())
+os.chdir('C:\\Users\\susie\\PycharmProjects\\datacamp')
 
+import matplotlib.image as img
+import pandas as pd
+image = img.imread('sea.jpg')
+image.shape  # Three dimensions
+
+r = []
+g = []
+b = []
+
+for row in image:
+    for pixel in row:
+        # A pixel contains RGB values
+        temp_r, temp_g, temp_b = pixel
+        r.append(temp_r)
+        g.append(temp_g)
+        b.append(temp_b)
+
+pixels = pd.DataFrame({'red' : r,
+                       'blue': b,
+                       'green' : g})
+
+print(pixels.head())
+
+# Scale data
+from scipy.cluster.vq import whiten
+
+scaled_red = whiten(pixels['red'])
+scaled_green = whiten(pixels['green'])
+scaled_blue = whiten(pixels['blue'])
+
+pixels_scaled = pd.DataFrame({'scaled_red' : scaled_red,
+                              'scaled_green' : scaled_green,
+                              'scaled_blue' : scaled_blue})
+
+# Create an elbow plot
+distortions = []
+num_clusters = range(1,11)
+
+from scipy.cluster.vq import kmeans, vq
+
+# Create a list of distortions from the kmeans method
+for i in num_clusters:
+    cluster_centres, distortion = kmeans(pixels_scaled[['scaled_red', 'scaled_blue', 'scaled_green']], i)
+    distortions.append(distortion)
+
+# Create a data frame with two lists - number of clusters and distortions
+elbow_plot = pd.DataFrame({'num_clusters' : num_clusters,
+                           'distortions' : distortions})
+
+# Create a line plot of num_clusters and distortions
+sns.lineplot(x='num_clusters', y='distortions', data=elbow_plot)
+plt.xticks(num_clusters)
+plt.show()
+
+# Elbow plot indicates 2 clusters - support initial observation of two colors in the image
+
+# Standardising colors
+
+colors = []
+
+# Find standard deviations
+r_std, g_std, b_std = pixels[['red', 'blue', 'green']].std()
+
+# Scale actual RGB values in range of 0-1
+for cluster_centre in cluster_centres:
+    scaled_r, scaled_g, scaled_b = cluster_centre
+    colors.append((
+        scaled_r * r_std/255,
+        scaled_g * g_std/255,
+        scaled_b * b_std/255
+    ))
+
+# Display dominant colors
+
+# Dimensions: 2 x 3 (N x 3 matrix)
+print(colors)
+
+# Dimensions: 1 x 2 x 3 (1 x N x 3 matrix)
+plt.imshow([colors])
+plt.show()
+
+# B: Document clustering
+# 1. Clean data before processing - remove items including punctuation, emoticons and other words such as 'the'
+# 2. Determine importance of terms in doc - TF-IDF matrix
+# 3. Display top terms in each cluster
+
+# Clean and tokenize data
+# Convert text into smaller parts called tokens, clean data for processing
+
+from nltk.tokenize import word_tokenize
+import re
+
+def remove_noise(text, stop_words = []):
+    tokens = word_tokenize(text)
+    cleaned_tokens = []
+    for token in tokens:
+        token = re.sub('[^A-Za-z0-9]+','',token)
+        if len(token) > 1 and token.lower() not in stop_words:
+            # Get lowercase
+            cleaned_tokens.append(token.lower())
+    return  cleaned_tokens
+
+# Document term matrix and sparse matrices
+# Document term matrix formed
+# Most elements in matrix are zeros
+# Sparse matrix is created - more efficient storage
+
+# TF-IDF (Term Frequency - Inverse Document Frequency)
+# A weighted measure - evaluate how important a word is to a document in a collection
+from sklearn.feature_extraction.text import TfidfVectorizer
+tfidf_vectorizer = TfidfVectorizer(max_df=0.8, max_features=50,  # Max and min fraction of documents (20-80% docs)
+                                   # Keep top 50 terms
+                                   min_df=0.2, tokenizer=remove_noise)  # Use custom function as tokenizer
+
+tfidf_matrix = tfidf_vectorizer.fit_transform(data)
+
+# Clustering with sparse matrix
+# kmeans() in SciPy does not support sparse matrices
+# Use .todense() to convert to a matrix
+
+cluster_centres, distortion = kmeans(tfidf_matrix.todense(), num_clusters)
+# Don't use elbow plot - takes an erratic form due to the high number of variables
+
+# Top terms per cluster
+# Cluster centres - lists with a size equal to the number of terms
+# Each value in the cluster center is its importance
+# Create a dictionary and print top terms
+
+terms = tfidf_vectorizer.get_feature_names()  # Create a list of all terms
+
+for i in range(num_clusters):
+    center_terms = dict(zip(terms, list(cluster_centres[i])))  # Create a dict with cluster centres and terms
+    sorted_terms = sorted(center_terms, key=center_terms.get, reverse=True)
+    print(sorted_terms[:3])
+
+# More considerations
+# Can modify remove_noise function to work with hyperlinks, emoticons etc.
+# Normalize words to base form (run, ran, running -> run)
+# .todense() may not work with large datasets
+
+# C: Clustering with multiple features
+# Basic checks
+
+# Prints average category values by cluster
+print(fifa.groupby('cluster_labels')[['scaled_heading_accuracy', 'scaled_volleys', 'scaled_finishing']].mean())
+
+# Prints count of cluster labels
+print(fifa.groupby('cluster_labels')['ID'].count())
+
+# If one cluster smaller than others - may want to check if cluster centre similar to other clusters
+# If yes, may want to reduce number of clusters
+
+# Visualizations
+# Visualise cluster centres
+# Visualise other variables for each cluster
+
+# Plot cluster centers
+fifa.groupby('cluster_labels')[scaled_features].mean().plot(kind='bar')
+plt.show()
+
+# Top items in clusters
+for cluster in fifa['cluster_labels'].unique()
+    print(cluster, fifa[fifa['cluster_labels'] == cluster]['name'].values[:5])
+
+# Feature reduction
+# Useful when dealing with large number of features
+# Factor analysis, multi-dimensional scaling - pre-cursor to clustering
 
